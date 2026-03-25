@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memos</title>
+    <!-- Clean modern font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h2>Memos</h2>
+            <p class="subtitle">Securely linked blocks</p>
+            <div class="status-bar">
+                <span class="status-dot"></span>
+                <span id="nodeStatus">Connected</span>
+            </div>
+        </header>
+        
+        <main>
+            <div class="input-section glass-panel">
+                <textarea id="memoInput" placeholder="What's on your mind?" maxlength="500"></textarea>
+                
+                <div class="buttons">
+                    <!-- Progress indicator container -->
+                    <div id="miningStatus" class="mining-status hidden">
+                        <span class="spinner"></span> Saving...
+                    </div>
+                    <button id="saveBtn" class="btn btn-primary" onclick="mineBlock()">Save Memo</button>
+                    <!-- <button id="loadBtn" class="btn btn-secondary" onclick="loadMemos()">Refresh</button> -->
+                </div>
+            </div>
+
+            <div class="list-section">
+                <!-- <h3>Chain Log</h3> -->
+                <div class="memo-list-container" id="scrollContainer">
+                    <div id="memoList" class="memo-list">
+                        <!-- Blocks will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
