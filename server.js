@@ -1,5 +1,5 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { sql } = require('@vercel/postgres');
 const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
@@ -9,10 +9,14 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Initialize DB
-const dbPath = process.env.VERCEL ? '/tmp/memo.db' : path.join(__dirname, 'memo.db');
-const db = new sqlite3.Database(dbPath);
-db.run("CREATE TABLE IF NOT EXISTS blocks (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT, hash TEXT, previous_hash TEXT, timestamp TEXT)");
+// Initialize DB (Vercel Postgres)
+sql`CREATE TABLE IF NOT EXISTS blocks (
+    id SERIAL PRIMARY KEY, 
+    content TEXT, 
+    hash TEXT, 
+    previous_hash TEXT, 
+    timestamp TEXT
+)`.catch(err => console.error("Table creation error:", err));
 
 // Helper to generate SHA-256 hash
 function generateHash(previousHash, timestamp, content) {
@@ -20,42 +24,38 @@ function generateHash(previousHash, timestamp, content) {
 }
 
 // [Mine/Save Block] API
-app.post('/memos', (req, res) => {
+app.post('/memos', async (req, res) => {
     const content = req.body.content;
     if (!content || content.trim() === '') {
         return res.status(400).json({ error: "Block data cannot be empty" });
     }
 
-    // Get the previous hash
-    db.get("SELECT hash FROM blocks ORDER BY id DESC LIMIT 1", [], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        
-        const previousHash = row ? row.hash : "0000000000000000000000000000000000000000000000000000000000000000"; // Genesis prev hash
+    try {
+        const { rows } = await sql`SELECT hash FROM blocks ORDER BY id DESC LIMIT 1`;
+        const previousHash = rows.length > 0 ? rows[0].hash : "0000000000000000000000000000000000000000000000000000000000000000"; // Genesis prev hash
         const timestamp = new Date().toISOString();
         const hash = generateHash(previousHash, timestamp, content);
 
-        db.run("INSERT INTO blocks (content, hash, previous_hash, timestamp) VALUES (?, ?, ?, ?)", 
-            [content, hash, previousHash, timestamp], 
-            function(err) {
-                if (err) {
-                    return res.status(500).json({ error: err.message });
-                }
-                res.json({ id: this.lastID, content, hash, previous_hash: previousHash, timestamp });
-            });
-    });
+        const result = await sql`
+            INSERT INTO blocks (content, hash, previous_hash, timestamp) 
+            VALUES (${content}, ${hash}, ${previousHash}, ${timestamp}) 
+            RETURNING id
+        `;
+        
+        res.json({ id: result.rows[0].id, content, hash, previous_hash: previousHash, timestamp });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // [Load Blockchain] API
-app.get('/memos', (req, res) => {
-    // Return blocks in ascending order (like a real chain)
-    db.all("SELECT * FROM blocks ORDER BY id ASC", [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+app.get('/memos', async (req, res) => {
+    try {
+        const { rows } = await sql`SELECT * FROM blocks ORDER BY id ASC`;
         res.json(rows);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // DELIBERATELY NO DELETE API - BLOCKCHAIN IS IMMUTABLE

@@ -13,6 +13,6 @@
   "dependencies": {
     "body-parser": "^2.2.2",
     "express": "^5.2.1",
-    "sqlite3": "5.1.7"
+    "@vercel/postgres": "^0.8.0"
   }
 }
