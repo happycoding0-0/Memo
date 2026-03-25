@@ -13,6 +13,6 @@
   "dependencies": {
     "body-parser": "^2.2.2",
     "express": "^5.2.1",
-    "@vercel/postgres": "^0.8.0"
+    "pg": "^8.11.3"
   }
 }
