@@ -12,15 +12,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Initialize DB (Supabase / Postgres)
 const pool = new Pool({
     connectionString: process.env.POSTGRES_URL,
+    ssl: { rejectUnauthorized: false }
 });
 
-pool.query(`CREATE TABLE IF NOT EXISTS blocks (
-    id SERIAL PRIMARY KEY, 
-    content TEXT, 
-    hash TEXT, 
-    previous_hash TEXT, 
-    timestamp TEXT
-)`).catch(err => console.error("Table creation error:", err));
+async function ensureTable() {
+    await pool.query(`CREATE TABLE IF NOT EXISTS blocks (
+        id SERIAL PRIMARY KEY, 
+        content TEXT, 
+        hash TEXT, 
+        previous_hash TEXT, 
+        timestamp TEXT
+    )`);
+}
+ensureTable().catch(err => console.error("Table creation error:", err));
 
 // Helper to generate SHA-256 hash
 function generateHash(previousHash, timestamp, content) {
@@ -35,6 +39,7 @@ app.post('/memos', async (req, res) => {
     }
 
     try {
+        await ensureTable();
         const { rows } = await pool.query(`SELECT hash FROM blocks ORDER BY id DESC LIMIT 1`);
         const previousHash = rows.length > 0 ? rows[0].hash : "0000000000000000000000000000000000000000000000000000000000000000"; // Genesis prev hash
         const timestamp = new Date().toISOString();
@@ -55,6 +60,7 @@ app.post('/memos', async (req, res) => {
 // [Load Blockchain] API
 app.get('/memos', async (req, res) => {
     try {
+        await ensureTable();
         const { rows } = await pool.query(`SELECT * FROM blocks ORDER BY id ASC`);
         res.json(rows);
     } catch (err) {
