@@ -1,2 +1,8 @@
+<<<<<<< HEAD
 # Ignore node_modules
 node_modules/
+=======
+# Ignore node_modules
+node_modules/
+.env
+>>>>>>> d903207 (Migrate to PostgreSQL (Neon DB) and Vercel)

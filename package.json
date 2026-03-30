@@ -12,7 +12,12 @@
   "type": "commonjs",
   "dependencies": {
     "body-parser": "^2.2.2",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
+<<<<<<< HEAD
     "pg": "^8.11.3"
+=======
+    "pg": "^8.20.0"
+>>>>>>> d903207 (Migrate to PostgreSQL (Neon DB) and Vercel)
   }
 }

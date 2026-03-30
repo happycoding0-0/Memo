@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Pool } = require('pg');
 const bodyParser = require('body-parser');
@@ -9,20 +10,22 @@ const app = express();
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Initialize DB (Supabase / Postgres)
+// Initialize DB (Postgres)
 const pool = new Pool({
-    connectionString: process.env.POSTGRES_URL,
+    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
     ssl: { rejectUnauthorized: false }
 });
 
 async function ensureTable() {
-    await pool.query(`CREATE TABLE IF NOT EXISTS blocks (
-        id SERIAL PRIMARY KEY, 
-        content TEXT, 
-        hash TEXT, 
-        previous_hash TEXT, 
-        timestamp TEXT
-    )`);
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS blocks (
+            id SERIAL PRIMARY KEY,
+            content TEXT,
+            hash TEXT,
+            previous_hash TEXT,
+            timestamp TEXT
+        )
+    `);
 }
 ensureTable().catch(err => console.error("Table creation error:", err));
 
@@ -40,18 +43,18 @@ app.post('/memos', async (req, res) => {
 
     try {
         await ensureTable();
-        const { rows } = await pool.query(`SELECT hash FROM blocks ORDER BY id DESC LIMIT 1`);
+        // Get the previous hash
+        const { rows } = await pool.query("SELECT hash FROM blocks ORDER BY id DESC LIMIT 1");
         const previousHash = rows.length > 0 ? rows[0].hash : "0000000000000000000000000000000000000000000000000000000000000000"; // Genesis prev hash
         const timestamp = new Date().toISOString();
         const hash = generateHash(previousHash, timestamp, content);
 
-        const result = await pool.query(
-            `INSERT INTO blocks (content, hash, previous_hash, timestamp) 
-             VALUES ($1, $2, $3, $4) RETURNING id`,
+        const insertResult = await pool.query(
+            "INSERT INTO blocks (content, hash, previous_hash, timestamp) VALUES ($1, $2, $3, $4) RETURNING *", 
             [content, hash, previousHash, timestamp]
         );
         
-        res.json({ id: result.rows[0].id, content, hash, previous_hash: previousHash, timestamp });
+        res.json(insertResult.rows[0]);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -61,7 +64,8 @@ app.post('/memos', async (req, res) => {
 app.get('/memos', async (req, res) => {
     try {
         await ensureTable();
-        const { rows } = await pool.query(`SELECT * FROM blocks ORDER BY id ASC`);
+        // Return blocks in ascending order (like a real chain)
+        const { rows } = await pool.query("SELECT * FROM blocks ORDER BY id ASC");
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
