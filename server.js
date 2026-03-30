@@ -11,8 +11,13 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Initialize DB (Postgres)
+let dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || '';
+if (dbUrl.includes('?')) {
+    dbUrl = dbUrl.split('?')[0];
+}
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
+    connectionString: dbUrl,
     ssl: { rejectUnauthorized: false }
 });
 
